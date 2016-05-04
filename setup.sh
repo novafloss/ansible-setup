@@ -114,7 +114,7 @@ if [ -z "$(find /usr/include/ -name ffi.h)" ]; then
 fi
 
 if ! hash ansible-playbook &> /dev/null; then
-    pip install --upgrade --editable git+https://github.com/ansible/ansible.git#egg=ansible
+    pip install --upgrade --editable git+https://github.com/ansible/ansible.git@devel#egg=ansible
 fi
 
 # User doesn't have a default virtualenv, let's configure one

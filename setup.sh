@@ -54,43 +54,52 @@ fi
 
 if ! hash python2 &> /dev/null; then
     if hash apt-cache; then
-        if apt-cache search python2 | grep '$python2 '; then
+        if apt-cache search python2 | grep '^python2 '; then
             apt_get_install python2
-        elif apt-cache search python | grep '$python '; then
+        elif apt-cache search python | grep '^python '; then
             apt_get_install python
+        else
+            echo 'Could not install python'
+            exit 1
         fi
     fi
 fi
 
-if [ ! -f /usr/include/python2.7/Python.h ]; then
+if ! -f /usr/include/python2.7/Python.h ]; then
     if hash apt-cache; then
-        if apt-cache search python2-dev | grep '$python2-dev '; then
+        if apt-cache search python2-dev | grep '^python2-dev '; then
             apt_get_install python2-dev
-        elif apt-cache search python-dev | grep '$python-dev '; then
+        elif apt-cache search python-dev | grep '^python-dev '; then
             apt_get_install python-dev
+        else
+            echo 'Could not install python-dev'
+            exit 1
         fi
     fi
 fi
 
 if ! hash virtualenv &> /dev/null && ! hash virtualenv2 &> /dev/null; then
     if hash apt-cache; then
-        if [ -n "$(apt-cache search python2-virtualenv)" ]; then
+        if apt-cache search python2-virtualenv | grep '^python2-virtualenv '; then
             apt_get_install python2-virtualenv
-        elif [ -n "$(apt-cache search python-virtualenv)" ]; then
+        elif apt-cache search python-virtualenv | grep '^python-virtualenv '; then
             apt_get_install python-virtualenv
+        else
+            echo 'Could not install virtualenv'
+            exit 1
         fi
     fi
 fi
 
 hash virtualenv2 &> /dev/null && virtualenv=virtualenv2 || virtualenv=virtualenv
 
-if [ ! -d ~/.ansible-setup/ansible_env ]; then
+if [ ! -d ~/.ansible-env ]; then
     mkdir -p ~/.ansible-setup
-    $virtualenv ~/.ansible-setup/ansible_env
+    $virtualenv ~/.ansible-env
 fi
 
 set +u  # activate is not compatible with -u
-source ~/.ansible-setup/ansible_env/bin/activate
+source ~/.ansible-env/bin/activate
 set -u
 
 if [ $(pip --version | cut -f2 -d' ' | sed 's/\..*//') -lt 8 ]; then
@@ -120,7 +129,7 @@ fi
 # User doesn't have a default virtualenv, let's configure one
 if [ ! -f ~/.bashrc ] || ! grep 'source.*activate' ~/.bashrc; then
     echo '# Activate ansible virtualenv' >> ~/.bashrc
-    echo 'source ~/.ansible-setup/ansible_env/bin/activate' >> ~/.bashrc
+    echo 'source ~/.ansible-env/bin/activate' >> ~/.bashrc
     echo '!! You need to login again for changes to take effect !!'
 fi
 
@@ -128,31 +137,25 @@ if [ ! -e ~/.ansible.cfg ]; then
     ln -sfn ~/.ansible-setup/ansible.cfg ~/.ansible.cfg
 fi
 
-#if ! hash lxc-create &> /dev/null; then
-#    if hash apt-cache; then
-#        if apt-cache search lxc; then
-#            apt_get_install lxc
-#        fi
-#    fi
-#fi
-#
-#if [ ! -f /usr/include/lxc/lxccontainer.h ]; then
-#    if hash apt-cache; then
-#        if apt-cache search lxc-dev; then
-#            apt_get_install lxc-dev
-#        fi
-#    fi
-#fi
-#
-#if ! python -c 'import lxc' &> /dev/null; then
-#    pip install python2-lxc
-#fi
+if [ -n "${SETUP_LXC-}" ] && ! hash lxc-create &> /dev/null; then
+    if [ "$OS" = "Ubuntu" ]; then
+        sudo add-apt-repository ppa:ubuntu-lxc/stable
+        apt_get_update
+        apt_get_install dnsmasq lxc lxc-dev
+        sudo sed -i 's/^#LXC_DOMAIN="lxc"/LXC_DOMAIN="lxc"/'
+        if ! grep 'server=/lxc/10.0.3.1' /etc/dnsmasq.d/lxc ; then
+            echo server=/lxc/10.0.3.1 | sudo tee /etc/dnsmasq.d/lxc
+        fi
+        sudo service lxc-net restart
+        sudo service dnsmasq restart
+    elif [ "$OS" == "Debian" ]; then
+        echo "deb http://backports.debian.org/debian-backports squeeze-backports main" | sudo tee /etc/apt/sources.list.d/lxc.list
+        echo -e "Package: lxc\nPin: release a=squeeze-backports\nPin-Priority: 1000" | sudo tee /etc/apt/preferences.d/lxc
+        apt_get_update
+        apt_get_install lxc debootstrap bridge-utils libvirt-bin
+    fi
+fi
 
-
-if [ -n "${SETUP_LXC-}" ]; then
-    pushd ~/.ansible-setup
-    mkdir -p roles
-    ansible-galaxy install -p roles git+https://github.com/toopy/ansible-role-lxc-dev.git
-    ansible-playbook -i localhost, lxc.yml
-    popd
+if ! python -c 'import lxc' &> /dev/null; then
+    pip install lxc-python2
 fi

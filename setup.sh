@@ -142,7 +142,7 @@ if [ -n "${SETUP_LXC-}" ]; then
         sudo add-apt-repository ppa:ubuntu-lxc/stable
         apt_get_update
         apt_get_install dnsmasq lxc lxc-dev
-        sudo sed -i 's/^#LXC_DOMAIN="lxc"/LXC_DOMAIN="lxc"/'
+        sudo sed -i 's/^#LXC_DOMAIN="lxc"/LXC_DOMAIN="lxc"/' /etc/default/lxc-net
         if ! grep 'server=/lxc/10.0.3.1' /etc/dnsmasq.d/lxc ; then
             echo server=/lxc/10.0.3.1 | sudo tee /etc/dnsmasq.d/lxc
         fi

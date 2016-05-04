@@ -54,9 +54,9 @@ fi
 
 if ! hash python2 &> /dev/null; then
     if hash apt-cache; then
-        if [ -n "$(apt-cache search python2)" ]; then
+        if apt-cache search python2 | grep '$python2 '; then
             apt_get_install python2
-        elif [ -n "$(apt-cache search python)" ]; then
+        elif apt-cache search python | grep '$python '; then
             apt_get_install python
         fi
     fi
@@ -64,9 +64,9 @@ fi
 
 if [ ! -f /usr/include/python2.7/Python.h ]; then
     if hash apt-cache; then
-        if [ -n "$(apt-cache search python2-dev)" ]; then
+        if apt-cache search python2-dev | grep '$python2-dev '; then
             apt_get_install python2-dev
-        elif [ -n "$(apt-cache search python-dev)" ]; then
+        elif apt-cache search python-dev | grep '$python-dev '; then
             apt_get_install python-dev
         fi
     fi

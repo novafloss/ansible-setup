@@ -154,8 +154,8 @@ if [ -n "${SETUP_LXC-}" ]; then
         apt_get_update
         apt_get_install lxc debootstrap bridge-utils libvirt-bin
     fi
-fi
 
-if ! python -c 'import lxc' &> /dev/null; then
-    pip install lxc-python2
+    if ! python -c 'import lxc' &> /dev/null; then
+        pip install lxc-python2
+    fi
 fi

@@ -142,12 +142,14 @@ if [ -n "${SETUP_LXC-}" ]; then
         sudo add-apt-repository ppa:ubuntu-lxc/stable
         apt_get_update
         apt_get_install dnsmasq lxc lxc-dev
+
         sudo sed -i 's/^#LXC_DOMAIN="lxc"/LXC_DOMAIN="lxc"/' /etc/default/lxc-net
-        if ! grep 'server=/lxc/10.0.3.1' /etc/dnsmasq.d/lxc ; then
-            echo server=/lxc/10.0.3.1 | sudo tee /etc/dnsmasq.d/lxc
-        fi
         sudo service lxc-net restart
-        sudo service dnsmasq restart
+
+        if ! grep 'server=/lxc/10.0.3.1' /etc/dnsmasq.d/lxc ; then
+            echo server=/lxc/10.0.3.1 | sudo tee -a /etc/dnsmasq.d/lxc
+            sudo service dnsmasq restart
+        fi
     elif [ "$OS" == "Debian" ]; then
         echo "deb http://backports.debian.org/debian-backports squeeze-backports main" | sudo tee /etc/apt/sources.list.d/lxc.list
         echo -e "Package: lxc\nPin: release a=squeeze-backports\nPin-Priority: 1000" | sudo tee /etc/apt/preferences.d/lxc

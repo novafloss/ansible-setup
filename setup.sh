@@ -158,6 +158,6 @@ if [ -n "${SETUP_LXC-}" ]; then
     fi
 
     if ! python -c 'import lxc' &> /dev/null; then
-        pip install lxc-python2
+        LC_ALL=C pip install lxc-python2
     fi
 fi

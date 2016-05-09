@@ -139,7 +139,7 @@ fi
 
 if [ -n "${SETUP_LXC-}" ]; then
     if [ "$OS" = "Ubuntu" ]; then
-        sudo add-apt-repository ppa:ubuntu-lxc/stable
+        sudo add-apt-repository --yes ppa:ubuntu-lxc/stable
         apt_get_update
         apt_get_install dnsmasq lxc lxc-dev
 

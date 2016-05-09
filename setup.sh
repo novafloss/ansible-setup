@@ -65,7 +65,7 @@ if ! hash python2 &> /dev/null; then
     fi
 fi
 
-if ! -f /usr/include/python2.7/Python.h ]; then
+if ! [ -f /usr/include/python2.7/Python.h ]; then
     if hash apt-cache; then
         if apt-cache search python2-dev | grep '^python2-dev '; then
             apt_get_install python2-dev

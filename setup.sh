@@ -151,10 +151,7 @@ if [ -n "${SETUP_LXC-}" ]; then
             sudo service dnsmasq restart
         fi
     elif [ "$OS" == "Debian" ]; then
-        echo "deb http://backports.debian.org/debian-backports squeeze-backports main" | sudo tee /etc/apt/sources.list.d/lxc.list
-        echo -e "Package: lxc\nPin: release a=squeeze-backports\nPin-Priority: 1000" | sudo tee /etc/apt/preferences.d/lxc
-        apt_get_update
-        apt_get_install lxc debootstrap bridge-utils libvirt-bin
+        apt_get_install lxc-dev
     fi
 
     if ! python -c 'import lxc' &> /dev/null; then

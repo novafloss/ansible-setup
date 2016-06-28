@@ -158,3 +158,13 @@ if [ -n "${SETUP_LXC-}" ]; then
         LC_ALL=C pip install lxc-python2
     fi
 fi
+
+if [ -n "${SETUP_LXD-}" ]; then
+    if [ "$OS" = "Ubuntu" ]; then
+        sudo add-apt-repository -y ppa:ubuntu-lxc/lxd-stable
+        sudo apt-get update -y
+        sudo apt-get install -y lxd
+        sudo lxd init --auto
+        sudo lxc list
+    fi
+fi

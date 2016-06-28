@@ -9,7 +9,7 @@ Vagrant.configure(2) do |config|
 
       box.vm.provision "shell", inline: <<-SHELL
         cd /home/vagrant
-        sudo --set-home -u vagrant SETUP_LXC=1 DEBUG=1 /vagrant/setup.sh
+        sudo --set-home -u vagrant SETUP_LXD=1 SETUP_LXC=1 DEBUG=1 /vagrant/setup.sh
       SHELL
     end
   end

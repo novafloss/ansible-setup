@@ -198,9 +198,10 @@ if [ -n "${SETUP_LXD-}" ]; then
         sudo gpasswd -a $USER lxd
         sg lxd 'lxc list'
 
-        if ! sysctl net.ipv6.conf.lxdbr0.forwarding | grep '= 1'; then
-            echo net.ipv6.conf.lxdbr0.forwarding=1 | sudo tee /etc/sysctl.d/40-ipv6-lxdbr0-forward.conf
-            sudo sysctl -w net.ipv6.conf.lxdbr0.forwarding=1
+        if [ ! -f /etc/dnsmasq.d/lxd ] ; then
+            echo server=/lxd/10.0.40.1 | sudo tee -a /etc/dnsmasq.d/lxd
+            echo except-interface=lxdbr0 | sudo tee -a /etc/dnsmasq.d/lxd
+            sudo service dnsmasq restart
         fi
     fi
 fi

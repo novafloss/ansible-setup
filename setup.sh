@@ -170,11 +170,34 @@ fi
 
 if [ -n "${SETUP_LXD-}" ]; then
     if [ "$OS" = "Ubuntu" ]; then
+        echo lxd    lxd/bridge-ipv4-dhcp-first    string    10.0.40.2 | sudo debconf-set-selections
+        echo lxd    lxd/bridge-ipv4-netmask    string    24 | sudo debconf-set-selections
+        echo lxd    lxd/bridge-ipv6-address    string | sudo debconf-set-selections
+        echo lxd    lxd/bridge-http-proxy    boolean    false | sudo debconf-set-selections
+        echo lxd    lxd/bridge-dnsmasq    string | sudo debconf-set-selections
+        echo lxd    lxd/bridge-ipv4-dhcp-leases    string    252 | sudo debconf-set-selections
+        echo lxd    lxd/bridge-empty-error    note | sudo debconf-set-selections
+        echo lxd    lxd/setup-bridge    boolean    true | sudo debconf-set-selections
+        echo lxd    lxd/bridge-random-warning    note | sudo debconf-set-selections
+        echo lxd    lxd/bridge-ipv4-nat    boolean    true | sudo debconf-set-selections
+        echo lxd    lxd/use-existing-bridge    boolean    false | sudo debconf-set-selections
+        echo lxd    lxd/bridge-ipv4-dhcp-last    string    10.0.40.254 | sudo debconf-set-selections
+        echo lxd    lxd/bridge-name    string    lxdbr0 | sudo debconf-set-selections
+        echo lxd    lxd/bridge-ipv6-nat    boolean    false | sudo debconf-set-selections
+        echo lxd    lxd/bridge-ipv6    boolean    false | sudo debconf-set-selections
+        echo lxd    lxd/bridge-domain    string    lxd | sudo debconf-set-selections
+        echo lxd    lxd/bridge-ipv4    boolean    true | sudo debconf-set-selections
+        echo lxd    lxd/bridge-ipv6-netmask    string | sudo debconf-set-selections
+        echo lxd    lxd/bridge-ipv4-address    string    10.0.40.1 | sudo debconf-set-selections
+        echo lxd    lxd/bridge-upgrade-warning    note | sudo debconf-set-selections
+        echo lxd    lxd/update-profile    boolean    true | sudo debconf-set-selections
         sudo add-apt-repository -y ppa:ubuntu-lxc/lxd-stable
         sudo apt-get update -y
-        sudo apt-get install -y lxd
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd
         sudo lxd init --auto
-        sudo lxc list
+        sudo gpasswd -a $USER lxd
+        newgrp lxd
+        lxc list
 
         if ! sysctl net.ipv6.conf.lxdbr0.forwarding | grep '= 1'; then
             echo net.ipv6.conf.lxdbr0.forwarding=1 | sudo tee /etc/sysctl.d/40-ipv6-lxdbr0-forward.conf

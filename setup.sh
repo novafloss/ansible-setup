@@ -175,5 +175,10 @@ if [ -n "${SETUP_LXD-}" ]; then
         sudo apt-get install -y lxd
         sudo lxd init --auto
         sudo lxc list
+
+        if ! sysctl net.ipv6.conf.lxdbr0.forwarding | grep '= 1'; then
+            echo net.ipv6.conf.lxdbr0.forwarding=1 | sudo tee /etc/sysctl.d/40-ipv6-lxdbr0-forward.conf
+            sudo sysctl -w net.ipv6.conf.lxdbr0.forwarding=1
+        fi
     fi
 fi

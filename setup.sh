@@ -196,8 +196,7 @@ if [ -n "${SETUP_LXD-}" ]; then
         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd
         sudo lxd init --auto
         sudo gpasswd -a $USER lxd
-        newgrp lxd
-        lxc list
+        sg lxd 'lxc list'
 
         if ! sysctl net.ipv6.conf.lxdbr0.forwarding | grep '= 1'; then
             echo net.ipv6.conf.lxdbr0.forwarding=1 | sudo tee /etc/sysctl.d/40-ipv6-lxdbr0-forward.conf

@@ -193,7 +193,7 @@ if [ -n "${SETUP_LXD-}" ]; then
         echo lxd    lxd/update-profile    boolean    true | sudo debconf-set-selections
         sudo add-apt-repository -y ppa:ubuntu-lxc/lxd-stable
         sudo apt-get update -y
-        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd dnsmasq
         sudo lxd init --auto
         sudo gpasswd -a $USER lxd
         sg lxd 'lxc list'

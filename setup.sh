@@ -130,6 +130,7 @@ fi
 if [ ! -f ~/.bashrc ] || ! grep 'source.*activate' ~/.bashrc; then
     echo '# Activate ansible virtualenv' >> ~/.bashrc
     echo 'source ~/.ansible-env/bin/activate' >> ~/.bashrc
+    echo 'export ANSIBLE_STDOUT_CALLBACK=debug' >> ~/.bashrc
     echo '!! You need to login again for changes to take effect !!'
 fi
 

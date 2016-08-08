@@ -126,15 +126,6 @@ if ! hash ansible-playbook &> /dev/null; then
     pip install --upgrade --editable git+https://github.com/ansible/ansible.git@devel#egg=ansible
 fi
 
-if [ ! -f ~/.ansible-env/src/ansible/lib/ansible/modules/extras/cloud/lxd/lxd_container.py ]; then
-    # remove when this is merged
-    # https://github.com/ansible/ansible-modules-extras/pull/2208
-    pushd ~/.ansible-env/src/ansible/lib/ansible/modules/extras
-    git remote add jpic https://github.com/jpic/ansible-modules-extras.git
-    git fetch jpic
-    git reset --hard jpic/lxd_container_contrib
-fi
-
 # User doesn't have a default virtualenv, let's configure one
 if [ ! -f ~/.bashrc ] || ! grep 'source.*activate' ~/.bashrc; then
     echo '# Activate ansible virtualenv' >> ~/.bashrc

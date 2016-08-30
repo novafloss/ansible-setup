@@ -152,7 +152,9 @@ if [ -n "${SETUP_LXC-}" ]; then
             sudo service dnsmasq restart
         fi
     elif [ "$OS" == "Debian" ]; then
-        apt-cache search lxc-dev && apt_get_install lxc-dev || echo lxc-dev not found
+        if [ -n $(apt-cache search lxc-dev) ]; then
+            apt_get_install lxc-dev
+        fi
     fi
 
     if ! python -c 'import lxc' &> /dev/null; then

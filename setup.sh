@@ -130,7 +130,7 @@ if [ ! -e ~/.ansible.cfg ]; then
     ln -sfn ~/.ansible-setup/ansible.cfg ~/.ansible.cfg
 fi
 
-if [ -n "${SETUP_LXC-}" ]; then
+if [[ -n "${SETUP_LXC-}" && "${SETUP_LXC-}" -ne "0" ]]; then
     if [ "$OS" = "Ubuntu" ]; then
         sudo add-apt-repository --yes ppa:ubuntu-lxc/stable
         apt_get_update

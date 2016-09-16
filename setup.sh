@@ -138,12 +138,8 @@ pushd $VIRTUALENV_PATH/src/ansible
     pip install --upgrade --editable $VIRTUALENV_PATH/src/ansible
 popd
 
-# User doesn't have a default virtualenv, let's configure one
-if [ ! -f ~/.bashrc ] || ! grep 'source.*activate' ~/.bashrc; then
-    echo '# Activate ansible virtualenv' >> ~/.bashrc
-    echo 'source ~/.ansible-env/bin/activate' >> ~/.bashrc
-    echo 'export ANSIBLE_STDOUT_CALLBACK=debug' >> ~/.bashrc
-    echo '!! You need to login again for changes to take effect !!'
+if ! hash ansible &> /dev/null; then
+    sudo ln -sfn $VIRTUALENV_PATH/bin/ansible* /usr/bin/
 fi
 
 if [ ! -e ~/.ansible.cfg ]; then

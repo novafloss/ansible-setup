@@ -3,7 +3,6 @@ set -eu
 
 [ -z "${DEBUG-}" ] || set -x
 
-ANSIBLE_SETUP_DIR=${ANSIBLE_SETUP_DIR:-~/.ansible-setup}
 OS=$(lsb_release -si)
 VERSION=$(lsb_release -sr)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -49,6 +48,10 @@ apt_get_update() {
 
 hash git &> /dev/null || apt_get_install git
 
+if [ ! -e ~/.ansible-setup ]; then
+    ln -sfn $DIR ~/.ansible-setup
+fi
+
 if ! hash python2 &> /dev/null; then
     if hash apt-cache; then
         if apt-cache search python2 | grep '^python2 '; then
@@ -90,16 +93,13 @@ fi
 
 hash virtualenv2 &> /dev/null && virtualenv=virtualenv2 || virtualenv=virtualenv
 
-if [ ! -d $ANSIBLE_SETUP_DIR ]; then
-    mkdir -p $ANSIBLE_SETUP_DIR
-fi
-
-if [ ! -f $ANSIBLE_SETUP_DIR/bin/activate ]; then
-    $virtualenv $ANSIBLE_SETUP_DIR
+if [ ! -d ~/.ansible-env ]; then
+    mkdir -p ~/.ansible-setup
+    $virtualenv ~/.ansible-env
 fi
 
 set +u  # activate is not compatible with -u
-source $ANSIBLE_SETUP_DIR/bin/activate
+source ~/.ansible-env/bin/activate
 set -u
 
 if [ $(pip --version | cut -f2 -d' ' | sed 's/\..*//') -lt 8 ]; then
@@ -126,6 +126,14 @@ if ! hash ansible-playbook &> /dev/null; then
     pip install --upgrade --editable git+https://github.com/ansible/ansible.git@devel#egg=ansible
 fi
 
+# User doesn't have a default virtualenv, let's configure one
+if [ ! -f ~/.bashrc ] || ! grep 'source.*activate' ~/.bashrc; then
+    echo '# Activate ansible virtualenv' >> ~/.bashrc
+    echo 'source ~/.ansible-env/bin/activate' >> ~/.bashrc
+    echo 'export ANSIBLE_STDOUT_CALLBACK=debug' >> ~/.bashrc
+    echo '!! You need to login again for changes to take effect !!'
+fi
+
 if [ ! -e ~/.ansible.cfg ]; then
     ln -sfn ~/.ansible-setup/ansible.cfg ~/.ansible.cfg
 fi
@@ -146,7 +154,7 @@ if [[ -n "${SETUP_LXC-}" && "${SETUP_LXC-}" -ne "0" ]]; then
     fi
 
     if ! python -c 'import lxc' &> /dev/null; then
-        LC_ALL=C $ANSIBLE_SETUP_DIR/bin/pip install lxc-python2
+        LC_ALL=C pip install lxc-python2
     fi
 fi
 
@@ -186,26 +194,4 @@ if [ -n "${SETUP_LXD-}" ]; then
             sudo service dnsmasq restart
         fi
     fi
-fi
-
-always_activate() {
-  if [ ! -f ~/.bashrc ] || ! grep 'source.*activate' ~/.bashrc; then
-    echo '# Activate ansible virtualenv' >> ~/.bashrc
-    echo "source $ANSIBLE_SETUP_DIR/bin/activate" >> ~/.bashrc
-    echo 'export ANSIBLE_STDOUT_CALLBACK=debug' >> ~/.bashrc
-    echo '!! You need to login again for changes to take effect !!'
-  fi
-}
-
-if [[ $- == *i* ]]; then
-  while true; do
-    read -p "Do you wish to activate ansible setup in your shell ? "  yn
-    case $yn in
-      y ) always_activate; break;;
-      n ) exit;;
-      * ) echo "Please answer y or n.";;
-    esac
-  done
-elif [ "${ALWAYS_ACTIVATE-1}" = "1" ]; then
-    always_activate
 fi

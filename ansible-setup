@@ -1,0 +1,319 @@
+#!/bin/bash
+#
+# This standalone script provides utility functions for installing ansible and
+# test utils (lxc, lxd).
+#
+# Each function is documented with an example and may either be called directly
+# as such::
+#
+#   ./ansible-setup some_function some_argument
+#
+# Or can be used as a library as such::
+#
+#   source ansible-setup
+#   some_function some_argument
+#   other_function
+#
+if [[ ${BASH_SOURCE[0]} = $0 ]]; then
+    if [ -z "${1-}" ]; then
+        # Show help
+        awk '{ if ($0 ~ /^#/) { gsub(/^# ?/, "", $0); print $0 } }' $0
+        exit 1
+    else
+        set -eux
+    fi
+fi
+
+# $VIRTUALENV_PATH: path for ansible's virtualenv
+VIRTUALENV_PATH=${VIRTUALENV_PATH-$HOME/.ansible-env}
+
+# $ANSIBLE_RELEASE
+ANSIBLE_RELEASE=
+
+# See the list of remotes refs with git ls-remote
+ANSIBLE_REF=${ANSIBLE_REF-refs/heads/devel}
+
+# Package manager to install ansible dependencies
+if [ -z "${APT_INSTALL-}" ]; then
+    # Untested hacks to support non-apt systems are allowed in this script at
+    # your discretion
+    [ -e /etc/apt/sources.list ] && APT_INSTALL=1 || APT_INSTALL=0
+fi
+
+PIP=${PIP-$VIRTUALENV_PATH/bin/pip}
+PYTHON=${PYTHON-$VIRTUALENV_PATH/bin/python}
+PYTHON_CRYPTO=${PYTHON_CRYPTO-apt}
+
+# apt_get_install $@
+#   Retry-ing apt-get install, wrapper around `apt-get -y install` which
+#   retries during apt mirror downtime or empty local repository cache ie. when
+#   the user added a source or let some script do it.
+#
+apt_get_install() {
+    # Retry for 20 minutes, best supported network recovery time in the old
+    # paris office.
+    for ((n=0;n<=22;n++)); do
+        # Exit if install succeeds
+        sudo apt-get -y install $@ && return 0 || echo failed apt-get install
+
+        # Update sources after the first failure only, in case the packet
+        # source needs to be initialized
+        [ $n -ge 1 ] || apt_get_update 0
+
+        # Sleep 0 seconds first as the apt_get_update call might fix apt-get
+        # install !
+        sleep $((5*n))
+    done
+
+    # Let -e abort after sleeping 1155 sec before failing at the
+    # user's face while internet is down.
+    return 1
+}
+
+# apt_get_update [<retries=20>] [<sleep=60>]
+#   Retry-ing wrapper around `apt-get -qy update` to survive to apt mirror
+#   downtimes, sleeps 20 minutes by default.
+#
+apt_get_update() {
+    local retries=${1-20}
+    local sec=${2-60}
+
+    for ((n=0;n<=$retries;n++)); do
+        sudo apt-get -qy update && return 0 || echo failed apt-get update
+        sleep $((sec*n))
+    done
+
+    return 1
+}
+
+# Install python if not present, works with apt only.
+python2_require() {
+    hash python2 &> /dev/null && return || echo 'Require python2'
+
+    (( $APT_INSTALL )) || return
+
+    if apt-cache search python2 | grep '^python2 '; then
+        apt_get_install python2
+    elif apt-cache search python | grep '^python '; then
+        apt_get_install python
+    else
+        echo 'Could not install python'
+        return 1
+    fi
+}
+
+python2_crypto_require() {
+    if $PYTHON -c 'import Crypto'; then
+        return
+    fi
+
+    if (( $APT_INSTALL )); then
+        if apt-cache search python2-crypto | grep '^python2-crypto'; then
+            apt_get_install python2-crypto
+            return
+        elif apt-cache search python-crypto | grep '^python-crypto'; then
+            apt_get_install python-crypto
+            return
+        fi
+    fi
+
+    python2_dev_require
+    if (( $APT_INSTALL )); then
+        [ -n "$(find /usr/include/ -name e_os2.h)" ] || \
+            apt_get_install libssl-dev
+        [ -n "$(find /usr/include/ -name ffi.h)" ] || \
+            apt_get_install libffi-dev
+    fi
+    $PIP install pycrypto
+}
+
+python2_dev_require() {
+    (( $APT_INSTALL )) || return
+
+    if ! [ -f /usr/include/python2.7/Python.h ]; then
+        if apt-cache search python2-dev | grep '^python2-dev '; then
+            apt_get_install python2-dev
+        elif apt-cache search python-dev | grep '^python-dev '; then
+            apt_get_install python-dev
+        else
+            echo 'Could not install python-dev'
+            return 1
+        fi
+    fi
+}
+
+virtualenv_require() {
+    local pip_min_version="${1-8}"
+    local setuptools_min_version="${2-20}"
+
+    get() {
+        if hash virtualenv2 &> /dev/null; then
+            echo ${VIRTUALENV-virtualenv2}
+        elif hash virtualenv &> /dev/null; then
+            echo ${VIRTUALENV-virtualenv}
+        fi
+    }
+
+    if [ -z $(get) ] && (( $APT_INSTALL )); then
+        if apt-cache search python2-virtualenv | grep '^python2-virtualenv '; then
+            apt_get_install --no-install-recommends python2-virtualenv
+        elif apt-cache search python-virtualenv | grep '^python-virtualenv '; then
+            apt_get_install --no-install-recommends python-virtualenv
+        else
+            return 1
+        fi
+    fi
+    VIRTUALENV=$(get)
+
+    if [ ! -d $VIRTUALENV_PATH ]; then
+        $VIRTUALENV --system-site-packages $VIRTUALENV_PATH
+    fi
+    PYTHON=${PYTHON-$VIRTUALENV_PATH/bin/python}
+    PIP=${PIP-$VIRTUALENV_PATH/bin/python}
+
+    major_version() {
+        $PYTHON -c "import $1; print $1.__version__.split('.')[0]"
+    }
+    [ $(major_version pip) -ge $pip_min_version ] || \
+        $PIP install --upgrade pip
+    [ $(major_version setuptools) -ge $setuptools_min_version ] || \
+        $PIP install --upgrade setuptools
+}
+
+ansible_dependencies_require() {
+    virtualenv_require
+    python2_require
+    python2_crypto_require
+    $PIP install jinja2 PyYAML
+}
+
+# Note that this implementation aims at being fast for the first install rather
+# than to be clean.
+ansible_ref_require() {
+    local ansible_ref="${1-devel}"
+    local ansible_bin="${2-}"
+    local ansible_path="${ansible_path-$VIRTUALENV_PATH/src/ansible}"
+
+    echo Requiring ansible ref $ansible_ref in $ansible_path
+
+    ansible_dependencies_require
+
+    github_url() {
+        echo https://codeload.github.com/ansible/$1/tar.gz/$2
+    }
+
+    download_extract() {
+        python -c "import tarfile,urllib2; tarfile.open(fileobj=urllib2.urlopen('$1'), mode='r|gz').extractall()"
+    }
+
+    (( $APT_INSTALL < 1 )) || apt_get_install ca-certificates
+
+    pushd $(mktemp -d)
+        download_extract $(github_url ansible $ansible_ref) &
+        download_extract $(github_url ansible-modules-core $ansible_ref) &
+        download_extract $(github_url ansible-modules-extras $ansible_ref) &
+
+        until [[ $(jobs -r | wc -l | tr -d " ") -eq "0" ]]; do
+            sleep .1
+        done
+
+        rm -rf $ansible_path && mkdir -p ${ansible_path%/*}
+        mv ansible-$ansible_ref $ansible_path
+        rm -rf $ansible_path/lib/ansible/modules/{core,extras}
+        mv ansible-modules-core-$ansible_ref $ansible_path/lib/ansible/modules/core
+        mv ansible-modules-extras-$ansible_ref $ansible_path/lib/ansible/modules/extras
+    popd
+
+    $PIP install --upgrade --no-deps --editable $ansible_path
+
+    # Break paramiko dependency enforcement made by setuptools
+    sed -i "s@/usr/bin/env python@$VIRTUALENV_PATH/bin/python@" $ansible_path/bin/ansible*
+    ln -sfn $ansible_path/bin/ansible* $VIRTUALENV_PATH/bin/
+    [ -z $ansible_bin ] || sudo ln -sfn $VIRTUALENV_PATH/bin/ansible* $ansible_bin
+}
+
+# Install and configure lxc, works on ubuntu only, used for CI of this script.
+lxc_require() {
+    [ "$(lsb_release -si)" = "Ubuntu" ] || return 1
+    sudo add-apt-repository --yes ppa:ubuntu-lxc/stable
+    apt_get_update
+    apt_get_install dnsmasq lxc lxc-dev
+
+    sudo sed -i 's/^#LXC_DOMAIN="lxc"/LXC_DOMAIN="lxc"/' /etc/default/lxc-net
+    sudo service lxc-net restart
+
+    if ! grep 'server=/lxc/10.0.3.1' /etc/dnsmasq.d/lxc ; then
+        echo server=/lxc/10.0.3.1 | sudo tee -a /etc/dnsmasq.d/lxc
+        sudo service dnsmasq restart
+    fi
+}
+
+# Install lxc-python2 with pip
+lxc_python2_require() {
+    if ! [ -f /usr/include/python2.7/Python.h ]; then
+        if (( $APT_INSTALL )); then
+            if apt-cache search python2-dev | grep '^python2-dev '; then
+                apt_get_install python2-dev
+            elif apt-cache search python-dev | grep '^python-dev '; then
+                apt_get_install python-dev
+            else
+                echo 'Could not install python-dev'
+                exit 1
+            fi
+        fi
+    fi
+
+    if ! $PYTHON -c 'import lxc' &> /dev/null; then
+        LC_ALL=C $PIP install lxc-python2
+    fi
+
+    $PYTHON -c 'import lxc; lxc.Container'
+}
+
+# Install and configure lxd, works on ubuntu only, used for CI.
+lxd_require() {
+    (( $APT_INSTALL )) || return 1
+
+    echo lxd    lxd/bridge-ipv4-dhcp-first    string    10.0.40.2 | sudo debconf-set-selections
+    echo lxd    lxd/bridge-ipv4-netmask    string    24 | sudo debconf-set-selections
+    echo lxd    lxd/bridge-ipv6-address    string | sudo debconf-set-selections
+    echo lxd    lxd/bridge-http-proxy    boolean    false | sudo debconf-set-selections
+    echo lxd    lxd/bridge-dnsmasq    string | sudo debconf-set-selections
+    echo lxd    lxd/bridge-ipv4-dhcp-leases    string    252 | sudo debconf-set-selections
+    echo lxd    lxd/bridge-empty-error    note | sudo debconf-set-selections
+    echo lxd    lxd/setup-bridge    boolean    true | sudo debconf-set-selections
+    echo lxd    lxd/bridge-random-warning    note | sudo debconf-set-selections
+    echo lxd    lxd/bridge-ipv4-nat    boolean    true | sudo debconf-set-selections
+    echo lxd    lxd/use-existing-bridge    boolean    false | sudo debconf-set-selections
+    echo lxd    lxd/bridge-ipv4-dhcp-last    string    10.0.40.254 | sudo debconf-set-selections
+    echo lxd    lxd/bridge-name    string    lxdbr0 | sudo debconf-set-selections
+    echo lxd    lxd/bridge-ipv6-nat    boolean    false | sudo debconf-set-selections
+    echo lxd    lxd/bridge-ipv6    boolean    false | sudo debconf-set-selections
+    echo lxd    lxd/bridge-domain    string    lxd | sudo debconf-set-selections
+    echo lxd    lxd/bridge-ipv4    boolean    true | sudo debconf-set-selections
+    echo lxd    lxd/bridge-ipv6-netmask    string | sudo debconf-set-selections
+    echo lxd    lxd/bridge-ipv4-address    string    10.0.40.1 | sudo debconf-set-selections
+    echo lxd    lxd/bridge-upgrade-warning    note | sudo debconf-set-selections
+    echo lxd    lxd/update-profile    boolean    true | sudo debconf-set-selections
+    sudo add-apt-repository -y ppa:ubuntu-lxc/lxd-stable
+    sudo apt-get update -y
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd dnsmasq
+    test -f /root/.lxd_init || sudo lxd init --auto && sudo touch /root/.lxd_init
+    sudo gpasswd -a $USER lxd
+    sg lxd 'lxc list'
+
+    if [ ! -f /etc/dnsmasq.d/lxd ] ; then
+        echo server=/lxd/10.0.40.1 | sudo tee -a /etc/dnsmasq.d/lxd
+        echo except-interface=lxdbr0 | sudo tee -a /etc/dnsmasq.d/lxd
+        sudo service dnsmasq restart
+    fi
+}
+
+if [[ ${BASH_SOURCE[0]} = $0 ]]; then
+    if declare -f "$1" >&2; then
+        $@
+    else
+        echo Could not find function for $@
+        exit 1
+    fi
+fi

@@ -6,4 +6,4 @@ python:
 - '3.5'
 
 script:
-- SETUP_LXD=1 SETUP_LXC=1 DEBUG=1 ./setup.sh
+- ./test.sh

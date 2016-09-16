@@ -8,6 +8,9 @@ VERSION=$(lsb_release -sr)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 VIRTUALENV_PATH=${VIRTUALENV_PATH-$HOME/.ansible-env}
 
+# See the list of remotes refs with git ls-remote
+ANSIBLE_REF=${ANSIBLE_REF-refs/heads/devel}
+
 # apt_get_install $@
 #   Retry-ing wrapper around apt_get_install, because apt-cacher-ng is unstable,
 #   and because the Retries apt configuration done in set_apt_proxy does not
@@ -121,9 +124,19 @@ if [ -z "$(find /usr/include/ -name ffi.h)" ]; then
     fi
 fi
 
-if ! hash ansible-playbook &> /dev/null; then
-    $pip install --upgrade --editable git+https://github.com/ansible/ansible.git@devel#egg=ansible
-fi
+[ -e $VIRTUALENV_PATH/src/ansible ] || mkdir -p $VIRTUALENV_PATH/src/ansible
+
+pushd $VIRTUALENV_PATH/src/ansible
+    [ -e $VIRTUALENV_PATH/src/ansible/.git ] || git init .
+    git remote | grep origin || git remote add origin https://github.com/ansible/ansible.git
+    git fetch --depth 1 --recurse-submodules origin ${ANSIBLE_REF}
+    git reset --hard FETCH_HEAD
+    git submodule sync --recursive
+    # Speed up submodule
+    git config -l | grep submodule.fetchjobs || git config submodule.fetchJobs 5
+    git submodule update --recursive --init
+    pip install --upgrade --editable $VIRTUALENV_PATH/src/ansible
+popd
 
 # User doesn't have a default virtualenv, let's configure one
 if [ ! -f ~/.bashrc ] || ! grep 'source.*activate' ~/.bashrc; then

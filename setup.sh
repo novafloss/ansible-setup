@@ -3,10 +3,13 @@ set -eu
 
 [ -z "${DEBUG-}" ] || set -x
 
-ANSIBLE_SETUP_DIR=${ANSIBLE_SETUP_DIR:-~/.ansible-setup}
 OS=$(lsb_release -si)
 VERSION=$(lsb_release -sr)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+VIRTUALENV_PATH=${VIRTUALENV_PATH-$HOME/.ansible-env}
+
+# See the list of remotes refs with git ls-remote
+ANSIBLE_REF=${ANSIBLE_REF-refs/heads/devel}
 
 # apt_get_install $@
 #   Retry-ing wrapper around apt_get_install, because apt-cacher-ng is unstable,
@@ -50,7 +53,7 @@ apt_get_update() {
 hash git &> /dev/null || apt_get_install git
 
 if ! hash python2 &> /dev/null; then
-    if hash apt-cache; then
+    if [ -e /etc/apt/sources.list ]; then
         if apt-cache search python2 | grep '^python2 '; then
             apt_get_install python2
         elif apt-cache search python | grep '^python '; then
@@ -63,7 +66,7 @@ if ! hash python2 &> /dev/null; then
 fi
 
 if ! [ -f /usr/include/python2.7/Python.h ]; then
-    if hash apt-cache; then
+    if [ -e /etc/apt/sources.list ]; then
         if apt-cache search python2-dev | grep '^python2-dev '; then
             apt_get_install python2-dev
         elif apt-cache search python-dev | grep '^python-dev '; then
@@ -76,7 +79,7 @@ if ! [ -f /usr/include/python2.7/Python.h ]; then
 fi
 
 if ! hash virtualenv &> /dev/null && ! hash virtualenv2 &> /dev/null; then
-    if hash apt-cache; then
+    if [ -e /etc/apt/sources.list ]; then
         if apt-cache search python2-virtualenv | grep '^python2-virtualenv '; then
             apt_get_install python2-virtualenv
         elif apt-cache search python-virtualenv | grep '^python-virtualenv '; then
@@ -90,44 +93,48 @@ fi
 
 hash virtualenv2 &> /dev/null && virtualenv=virtualenv2 || virtualenv=virtualenv
 
-if [ ! -d $ANSIBLE_SETUP_DIR ]; then
-    mkdir -p $ANSIBLE_SETUP_DIR
+if [ ! -d $VIRTUALENV_PATH ]; then
+    $virtualenv $VIRTUALENV_PATH
 fi
 
-if [ ! -f $ANSIBLE_SETUP_DIR/bin/activate ]; then
-    $virtualenv $ANSIBLE_SETUP_DIR
-fi
-
-set +u  # activate is not compatible with -u
-source $ANSIBLE_SETUP_DIR/bin/activate
-set -u
+pip=$VIRTUALENV_PATH/bin/pip
 
 if [ $(pip --version | cut -f2 -d' ' | sed 's/\..*//') -lt 8 ]; then
-    pip install --upgrade pip
+    $pip install --upgrade pip
 fi
 
 if [ $(easy_install --version | cut -f2 -d' ' | sed 's/\..*//') -lt 20 ]; then
-    pip install --upgrade setuptools
+    $pip install --upgrade setuptools
 fi
 
 if [ -z "$(find /usr/include/ -name e_os2.h)" ]; then
-    if hash apt-get &> /dev/null; then
+    if [ -e /etc/apt/sources.list ]; then
         apt_get_install libssl-dev
     fi
 fi
 
 if [ -z "$(find /usr/include/ -name ffi.h)" ]; then
-    if hash apt-get &> /dev/null; then
+    if [ -e /etc/apt/sources.list ]; then
         apt_get_install libffi-dev
     fi
 fi
 
-if ! hash ansible-playbook &> /dev/null; then
-    pip install --upgrade --editable git+https://github.com/ansible/ansible.git@devel#egg=ansible
-fi
+[ -e $VIRTUALENV_PATH/src/ansible ] || mkdir -p $VIRTUALENV_PATH/src/ansible
 
-if [ ! -e ~/.ansible.cfg ]; then
-    ln -sfn ~/.ansible-setup/ansible.cfg ~/.ansible.cfg
+pushd $VIRTUALENV_PATH/src/ansible
+    [ -e $VIRTUALENV_PATH/src/ansible/.git ] || git init .
+    git remote | grep origin || git remote add origin https://github.com/ansible/ansible.git
+    git fetch --depth 1 --recurse-submodules origin ${ANSIBLE_REF}
+    git reset --hard FETCH_HEAD
+    git submodule sync --recursive
+    # Speed up submodule
+    git config -l | grep submodule.fetchjobs || git config submodule.fetchJobs 5
+    git submodule update --recursive --init
+    pip install --upgrade --editable $VIRTUALENV_PATH/src/ansible
+popd
+
+if ! hash ansible &> /dev/null; then
+    sudo ln -sfn $VIRTUALENV_PATH/bin/ansible* /usr/bin/
 fi
 
 if [[ -n "${SETUP_LXC-}" && "${SETUP_LXC-}" -ne "0" ]]; then
@@ -146,7 +153,7 @@ if [[ -n "${SETUP_LXC-}" && "${SETUP_LXC-}" -ne "0" ]]; then
     fi
 
     if ! python -c 'import lxc' &> /dev/null; then
-        LC_ALL=C $ANSIBLE_SETUP_DIR/bin/pip install lxc-python2
+        LC_ALL=C $pip install lxc-python2
     fi
 fi
 
@@ -186,26 +193,4 @@ if [ -n "${SETUP_LXD-}" ]; then
             sudo service dnsmasq restart
         fi
     fi
-fi
-
-always_activate() {
-  if [ ! -f ~/.bashrc ] || ! grep 'source.*activate' ~/.bashrc; then
-    echo '# Activate ansible virtualenv' >> ~/.bashrc
-    echo "source $ANSIBLE_SETUP_DIR/bin/activate" >> ~/.bashrc
-    echo 'export ANSIBLE_STDOUT_CALLBACK=debug' >> ~/.bashrc
-    echo '!! You need to login again for changes to take effect !!'
-  fi
-}
-
-if [[ $- == *i* ]]; then
-  while true; do
-    read -p "Do you wish to activate ansible setup in your shell ? "  yn
-    case $yn in
-      y ) always_activate; break;;
-      n ) exit;;
-      * ) echo "Please answer y or n.";;
-    esac
-  done
-elif [ "${ALWAYS_ACTIVATE-1}" = "1" ]; then
-    always_activate
 fi

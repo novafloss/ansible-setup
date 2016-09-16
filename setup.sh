@@ -54,7 +54,7 @@ if [ ! -e ~/.ansible-setup ]; then
 fi
 
 if ! hash python2 &> /dev/null; then
-    if hash apt-cache; then
+    if [ -e /etc/apt/sources.list ]; then
         if apt-cache search python2 | grep '^python2 '; then
             apt_get_install python2
         elif apt-cache search python | grep '^python '; then
@@ -67,7 +67,7 @@ if ! hash python2 &> /dev/null; then
 fi
 
 if ! [ -f /usr/include/python2.7/Python.h ]; then
-    if hash apt-cache; then
+    if [ -e /etc/apt/sources.list ]; then
         if apt-cache search python2-dev | grep '^python2-dev '; then
             apt_get_install python2-dev
         elif apt-cache search python-dev | grep '^python-dev '; then
@@ -80,7 +80,7 @@ if ! [ -f /usr/include/python2.7/Python.h ]; then
 fi
 
 if ! hash virtualenv &> /dev/null && ! hash virtualenv2 &> /dev/null; then
-    if hash apt-cache; then
+    if [ -e /etc/apt/sources.list ]; then
         if apt-cache search python2-virtualenv | grep '^python2-virtualenv '; then
             apt_get_install python2-virtualenv
         elif apt-cache search python-virtualenv | grep '^python-virtualenv '; then
@@ -110,13 +110,13 @@ if [ $(easy_install --version | cut -f2 -d' ' | sed 's/\..*//') -lt 20 ]; then
 fi
 
 if [ -z "$(find /usr/include/ -name e_os2.h)" ]; then
-    if hash apt-get &> /dev/null; then
+    if [ -e /etc/apt/sources.list ]; then
         apt_get_install libssl-dev
     fi
 fi
 
 if [ -z "$(find /usr/include/ -name ffi.h)" ]; then
-    if hash apt-get &> /dev/null; then
+    if [ -e /etc/apt/sources.list ]; then
         apt_get_install libffi-dev
     fi
 fi

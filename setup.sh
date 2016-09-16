@@ -6,6 +6,7 @@ set -eu
 OS=$(lsb_release -si)
 VERSION=$(lsb_release -sr)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+VIRTUALENV_PATH=${VIRTUALENV_PATH-$HOME/.ansible-env}
 
 # apt_get_install $@
 #   Retry-ing wrapper around apt_get_install, because apt-cacher-ng is unstable,
@@ -93,21 +94,19 @@ fi
 
 hash virtualenv2 &> /dev/null && virtualenv=virtualenv2 || virtualenv=virtualenv
 
-if [ ! -d ~/.ansible-env ]; then
+if [ ! -d $VIRTUALENV_PATH ]; then
     mkdir -p ~/.ansible-setup
-    $virtualenv ~/.ansible-env
+    $virtualenv $VIRTUALENV_PATH
 fi
 
-set +u  # activate is not compatible with -u
-source ~/.ansible-env/bin/activate
-set -u
+pip=$VIRTUALENV_PATH/bin/pip
 
 if [ $(pip --version | cut -f2 -d' ' | sed 's/\..*//') -lt 8 ]; then
-    pip install --upgrade pip
+    $pip install --upgrade pip
 fi
 
 if [ $(easy_install --version | cut -f2 -d' ' | sed 's/\..*//') -lt 20 ]; then
-    pip install --upgrade setuptools
+    $pip install --upgrade setuptools
 fi
 
 if [ -z "$(find /usr/include/ -name e_os2.h)" ]; then
@@ -123,7 +122,7 @@ if [ -z "$(find /usr/include/ -name ffi.h)" ]; then
 fi
 
 if ! hash ansible-playbook &> /dev/null; then
-    pip install --upgrade --editable git+https://github.com/ansible/ansible.git@devel#egg=ansible
+    $pip install --upgrade --editable git+https://github.com/ansible/ansible.git@devel#egg=ansible
 fi
 
 # User doesn't have a default virtualenv, let's configure one
@@ -154,7 +153,7 @@ if [[ -n "${SETUP_LXC-}" && "${SETUP_LXC-}" -ne "0" ]]; then
     fi
 
     if ! python -c 'import lxc' &> /dev/null; then
-        LC_ALL=C pip install lxc-python2
+        LC_ALL=C $pip install lxc-python2
     fi
 fi
 

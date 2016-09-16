@@ -52,10 +52,6 @@ apt_get_update() {
 
 hash git &> /dev/null || apt_get_install git
 
-if [ ! -e ~/.ansible-setup ]; then
-    ln -sfn $DIR ~/.ansible-setup
-fi
-
 if ! hash python2 &> /dev/null; then
     if [ -e /etc/apt/sources.list ]; then
         if apt-cache search python2 | grep '^python2 '; then
@@ -98,7 +94,6 @@ fi
 hash virtualenv2 &> /dev/null && virtualenv=virtualenv2 || virtualenv=virtualenv
 
 if [ ! -d $VIRTUALENV_PATH ]; then
-    mkdir -p ~/.ansible-setup
     $virtualenv $VIRTUALENV_PATH
 fi
 
@@ -140,10 +135,6 @@ popd
 
 if ! hash ansible &> /dev/null; then
     sudo ln -sfn $VIRTUALENV_PATH/bin/ansible* /usr/bin/
-fi
-
-if [ ! -e ~/.ansible.cfg ]; then
-    ln -sfn ~/.ansible-setup/ansible.cfg ~/.ansible.cfg
 fi
 
 if [[ -n "${SETUP_LXC-}" && "${SETUP_LXC-}" -ne "0" ]]; then

@@ -39,6 +39,10 @@ leftover from setup.sh::
     bash ansible-setup ansible_ref_require devel /usr/bin # or use stable-2.1 here
     bash ansible-setup lxc_python2_require
 
+If you still want automatic virtualenv activation::
+
+    echo source ~/.ansible-env/bin/activate >> ~/.bashrc
+
 Examples
 ========
 
@@ -74,4 +78,8 @@ Or, in a different virtualenv::
 
     VIRTUALENV_PATH=~/.ansible-devel ./ansible-setup lxc_python2_require
 
-Or, in a different virtualenv::
+If you still want automatic virtualenv activation::
+
+    echo source ~/.ansible-env/bin/activate >> ~/.bashrc
+    # Or if you used VIRTUALENV_PATH=~/.ansible-devel:
+    echo source ~/.ansible-devel/bin/activate >> ~/.bashrc

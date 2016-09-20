@@ -29,9 +29,15 @@ has been collected, leading to this new version.
 To upgrade, run any of the following examples, but feel free to delete any
 leftover from setup.sh::
 
+    # Uninstall
     rm -rf ~/.ansible-env ~/.ansible-setup
     unlink ~/.ansible.cfg
     sed -i '/source.*ansible-env/d' ~/.bashrc
+
+    # Reinstall
+    wget https://raw.githubusercontent.com/novafloss/ansible-setup/master/ansible-setup
+    bash ansible-setup ansible_ref_require devel /usr/bin # or use stable-2.1 here
+    bash ansible-setup python2_lxc_require
 
 Examples
 ========

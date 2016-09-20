@@ -68,7 +68,7 @@ Install ansible branch stable-2.1 in /usr/bin with the virtualenv in
 Install ansible devel in a virtualenv in ~/.ansible-devel::
 
     VIRTUALENV_PATH=~/.ansible-devel ./ansible-setup ansible_ref_require devel
-    ~/ansible-devel/bin/ansible --version  # would show 2.2
+    ~/.ansible-devel/bin/ansible --version  # would show 2.2
 
 In the same fashion, install the python2-lxc module::
 

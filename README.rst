@@ -37,7 +37,7 @@ leftover from setup.sh::
     # Reinstall
     wget https://raw.githubusercontent.com/novafloss/ansible-setup/master/ansible-setup
     bash ansible-setup ansible_ref_require devel /usr/bin # or use stable-2.1 here
-    bash ansible-setup python2_lxc_require
+    bash ansible-setup lxc_python2_require
 
 Examples
 ========
@@ -65,3 +65,13 @@ Install ansible devel in a virtualenv in ~/.ansible-devel::
 
     VIRTUALENV_PATH=~/.ansible-devel ./ansible-setup ansible_ref_require devel
     ~/ansible-devel/bin/ansible --version  # would show 2.2
+
+In the same fashion, install the python2-lxc module::
+
+    ./ansible-setup lxc_python2_require
+
+Or, in a different virtualenv::
+
+    VIRTUALENV_PATH=~/.ansible-devel ./ansible-setup lxc_python2_require
+
+Or, in a different virtualenv::

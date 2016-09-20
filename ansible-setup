@@ -27,9 +27,6 @@ fi
 # $VIRTUALENV_PATH: path for ansible's virtualenv
 VIRTUALENV_PATH=${VIRTUALENV_PATH-$HOME/.ansible-env}
 
-# $ANSIBLE_RELEASE
-ANSIBLE_RELEASE=
-
 # See the list of remotes refs with git ls-remote
 ANSIBLE_REF=${ANSIBLE_REF-refs/heads/devel}
 

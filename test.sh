@@ -4,8 +4,17 @@ set -eux
 LXD_NAME=${LXD_NAME-test-trusty}
 LXD_IMAGE=${LXD_IMAGE-ubuntu:14.04}
 ANSIBLE_SETUP="${1-./ansible-setup}"
+TESTENV=testenv
 
 source $ANSIBLE_SETUP
+
+teardown() {
+    rm -rf $TESTENV
+}
+trap teardown EXIT INT QUIT TERM ABRT ALRM HUP
+rm -rf $TESTENV
+VIRTUALENV_PATH=$TESTENV $ANSIBLE_SETUP ansible_ref_require stable-2.1
+$TESTENV/bin/ansible --version
 
 lxd_require || echo 'Not ubuntu, lets hope it works !'
 

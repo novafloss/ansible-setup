@@ -205,27 +205,30 @@ ansible_ref_require() {
 
     (( $APT_INSTALL < 1 )) || apt_get_install ca-certificates
 
-    pushd $(mktemp -d)
+    tmp=$(mktemp -d)
+    pushd $tmp
         download_extract $(github_url ansible $ansible_ref) &
         download_extract $(github_url ansible-modules-core $ansible_ref) &
         download_extract $(github_url ansible-modules-extras $ansible_ref) &
-
-        until [[ $(jobs -r | wc -l | tr -d " ") -eq "0" ]]; do
-            sleep .1
-        done
-
-        rm -rf $ansible_path && mkdir -p ${ansible_path%/*}
-        mv ansible-$ansible_ref $ansible_path
-        rm -rf $ansible_path/lib/ansible/modules/{core,extras}
-        mv ansible-modules-core-$ansible_ref $ansible_path/lib/ansible/modules/core
-        mv ansible-modules-extras-$ansible_ref $ansible_path/lib/ansible/modules/extras
     popd
+
+    until [[ $(jobs -r | wc -l | tr -d " ") -eq "0" ]]; do
+        sleep .1
+    done
+
+    rm -rf $ansible_path && mkdir -p ${ansible_path%/*}
+    mv $tmp/ansible-$ansible_ref $ansible_path
+    rm -rf $ansible_path/lib/ansible/modules/{core,extras}
+    mv $tmp/ansible-modules-core-$ansible_ref $ansible_path/lib/ansible/modules/core
+    mv $tmp/ansible-modules-extras-$ansible_ref $ansible_path/lib/ansible/modules/extras
 
     $PIP install --upgrade --no-deps --editable $ansible_path
 
     # Break paramiko dependency enforcement made by setuptools
     sed -i "s@/usr/bin/env python@$VIRTUALENV_PATH/bin/python@" $ansible_path/bin/ansible*
-    ln -sfn $ansible_path/bin/ansible* $VIRTUALENV_PATH/bin/
+    for i in $ansible_path/bin/ansible*; do
+        ln -sfn ../src/ansible/bin/${i##*/} $VIRTUALENV_PATH/bin
+    done
     [ -z $ansible_bin ] || sudo ln -sfn $VIRTUALENV_PATH/bin/ansible* $ansible_bin
 }
 

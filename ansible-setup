@@ -233,7 +233,13 @@ ansible_ref_require() {
     for i in $ansible_path/bin/ansible*; do
         ln -sfn ../src/ansible/bin/${i##*/} $VIRTUALENV_PATH/bin
     done
-    [ -z $ansible_bin ] || sudo ln -sfn $VIRTUALENV_PATH/bin/ansible* $ansible_bin
+    if [ -n $ansible_bin ]; then
+        prefix=$VIRTUALENV_PATH
+        if [[ ! $prefix =~ ^/ ]]; then
+            prefix=$PWD/$prefix
+        fi
+        sudo ln -sfn $prefix/bin/ansible* $ansible_bin
+    fi
 }
 
 # Install and configure lxc, works on ubuntu only, used for CI of this script.

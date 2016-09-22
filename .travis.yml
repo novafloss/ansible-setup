@@ -4,6 +4,12 @@ dist: trusty
 language: python
 python:
 - '2.7'
+env:
+  matrix:
+  - TEST=lxd_require
+  - TEST=lxc_require
+  - TEST=ansible_ref_require_stable-2.1_absolute_virtualenv_path
+  - TEST=ansible_ref_require_devel_relative_virtualenv_path
 
 script:
-- ./test.sh
+- ./test.sh ${TEST}

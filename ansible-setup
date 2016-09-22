@@ -39,7 +39,6 @@ fi
 
 PIP=${PIP-$VIRTUALENV_PATH/bin/pip}
 PYTHON=${PYTHON-$VIRTUALENV_PATH/bin/python}
-PYTHON_CRYPTO=${PYTHON_CRYPTO-apt}
 
 # apt_get_install $@
 #   Retry-ing apt-get install, wrapper around `apt-get -y install` which

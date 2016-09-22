@@ -1,0 +1,14 @@
+#!/bin/bash -eux
+[ "$(lsb_release -si)" = "Ubuntu" ] && lxc_require || echo 'Not ubuntu'
+virtualenv_require
+lxc_python2_require
+name="testcirros"
+template="cirros"
+
+if sudo lxc-info --name $name; then
+    sudo lxc-destroy --force --name $name
+fi
+sudo lxc-create --template $template --name $name
+sudo lxc-start --name $name
+sudo lxc-attach --name $name --clear-env -- /bin/sh -c 'until ping -c1 google.com; do sleep .1; done'
+sudo lxc-destroy --force --name $name

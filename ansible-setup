@@ -37,10 +37,6 @@ if [ -z "${APT_INSTALL-}" ]; then
     [ -e /etc/apt/sources.list ] && APT_INSTALL=1 || APT_INSTALL=0
 fi
 
-PIP=${PIP-$VIRTUALENV_PATH/bin/pip}
-PYTHON=${PYTHON-$VIRTUALENV_PATH/bin/python}
-PYTHON_CRYPTO=${PYTHON_CRYPTO-apt}
-
 # apt_get_install $@
 #   Retry-ing apt-get install, wrapper around `apt-get -y install` which
 #   retries during apt mirror downtime or empty local repository cache ie. when
@@ -83,6 +79,14 @@ apt_get_update() {
     return 1
 }
 
+get_pip() {
+    echo $VIRTUALENV_PATH/bin/pip
+}
+
+get_python() {
+    echo $VIRTUALENV_PATH/bin/python
+}
+
 # Install python if not present, works with apt only.
 python2_require() {
     hash python2 &> /dev/null && return || echo 'Require python2'
@@ -100,7 +104,7 @@ python2_require() {
 }
 
 python2_crypto_require() {
-    if $PYTHON -c 'import Crypto'; then
+    if $(get_python) -c 'import Crypto'; then
         return
     fi
 
@@ -121,7 +125,7 @@ python2_crypto_require() {
         [ -n "$(find /usr/include/ -name ffi.h)" ] || \
             apt_get_install libffi-dev
     fi
-    $PIP install pycrypto
+    $(get_pip) install pycrypto
 }
 
 python2_dev_require() {
@@ -169,19 +173,19 @@ virtualenv_require() {
     PIP=${PIP-$VIRTUALENV_PATH/bin/python}
 
     major_version() {
-        $PYTHON -c "import $1; print $1.__version__.split('.')[0]"
+        $(get_python) -c "import $1; print $1.__version__.split('.')[0]"
     }
     [ $(major_version pip) -ge $pip_min_version ] || \
-        $PIP install --upgrade pip
+        $(get_pip) install --upgrade pip
     [ $(major_version setuptools) -ge $setuptools_min_version ] || \
-        $PIP install --upgrade setuptools
+        $(get_pip) install --upgrade setuptools
 }
 
 ansible_dependencies_require() {
     virtualenv_require
     python2_require
     python2_crypto_require
-    $PIP install jinja2 PyYAML
+    $(get_pip) install jinja2 PyYAML
 }
 
 # Note that this implementation aims at being fast for the first install rather
@@ -222,14 +226,20 @@ ansible_ref_require() {
     mv $tmp/ansible-modules-core-$ansible_ref $ansible_path/lib/ansible/modules/core
     mv $tmp/ansible-modules-extras-$ansible_ref $ansible_path/lib/ansible/modules/extras
 
-    $PIP install --upgrade --no-deps --editable $ansible_path
+    $(get_pip) install --upgrade --no-deps --editable $ansible_path
 
     # Break paramiko dependency enforcement made by setuptools
     sed -i "s@/usr/bin/env python@$VIRTUALENV_PATH/bin/python@" $ansible_path/bin/ansible*
     for i in $ansible_path/bin/ansible*; do
         ln -sfn ../src/ansible/bin/${i##*/} $VIRTUALENV_PATH/bin
     done
-    [ -z $ansible_bin ] || sudo ln -sfn $VIRTUALENV_PATH/bin/ansible* $ansible_bin
+    if [ -n $ansible_bin ]; then
+        prefix=$VIRTUALENV_PATH
+        if [[ ! $prefix =~ ^/ ]]; then
+            prefix=$PWD/$prefix
+        fi
+        sudo ln -sfn $prefix/bin/ansible* $ansible_bin
+    fi
 }
 
 # Install and configure lxc, works on ubuntu only, used for CI of this script.
@@ -263,11 +273,11 @@ lxc_python2_require() {
         fi
     fi
 
-    if ! $PYTHON -c 'import lxc' &> /dev/null; then
-        LC_ALL=C $PIP install lxc-python2
+    if ! $(get_python) -c 'import lxc' &> /dev/null; then
+        LC_ALL=C $(get_pip) install lxc-python2
     fi
 
-    $PYTHON -c 'import lxc; lxc.Container'
+    $(get_python) -c 'import lxc; lxc.Container'
 }
 
 # Install and configure lxd, works on ubuntu only, used for CI.
@@ -297,7 +307,7 @@ lxd_require() {
     echo lxd    lxd/update-profile    boolean    true | sudo debconf-set-selections
     sudo add-apt-repository -y ppa:ubuntu-lxc/lxd-stable
     sudo apt-get update -y
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd dnsmasq
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd dnsmasq lxc lxc-dev
     test -f /root/.lxd_init || sudo lxd init --auto && sudo touch /root/.lxd_init
     sudo gpasswd -a $USER lxd
     sg lxd 'lxc list'

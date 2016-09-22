@@ -1,0 +1,11 @@
+#!/bin/bash -eux
+[ "$(lsb_release -si)" = "Ubuntu" ] && lxd_require || echo 'Not ubuntu'
+name="testtrusty"
+image="ubuntu:14.04"
+
+if sg lxd "lxc info $LXD_NAME"; then
+    sg lxd "lxc delete --force $LXD_NAME"
+fi
+sg lxd "lxc info $LXD_NAME || lxc launch $LXD_IMAGE $LXD_NAME && lxc info $LXD_NAME | grep Running || lxc start $LXD_NAME"
+sg lxd "lxc exec $LXD_NAME bash -- -c 'until getent hosts google.com; do sleep .1; done'"
+sg lxd "lxc delete --force $LXD_NAME"

@@ -1,0 +1,9 @@
+#!/bin/bash -eux
+testenv=$HOME/testenv
+
+rm -rf $testenv
+VIRTUALENV_PATH=$testenv ansible_ref_require stable-2.1 /usr/bin
+test -f $testenv/src/ansible/lib/ansible/modules/core/__init__.py
+test -f $testenv/src/ansible/lib/ansible/modules/extras/__init__.py
+$testenv/bin/ansible --version | grep 2.1
+ansible --version | grep 2.1

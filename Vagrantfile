@@ -14,7 +14,7 @@ Vagrant.configure(2) do |config|
         sudo --set-home -u vagrant /vagrant/ansible-setup lxd_require
         sudo --set-home -u vagrant /vagrant/ansible-setup ansible_ref_require stable-2.1 /usr/bin
         sudo --set-home -u vagrant /vagrant/ansible-setup lxc_python2_require
-        sudo --set-home -u vagrant /vagrant/test.sh /vagrant/ansible-setup
+        sudo --set-home -u vagrant /vagrant/test.sh
       SHELL
     end
   end

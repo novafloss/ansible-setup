@@ -307,7 +307,7 @@ lxd_require() {
     echo lxd    lxd/update-profile    boolean    true | sudo debconf-set-selections
     sudo add-apt-repository -y ppa:ubuntu-lxc/lxd-stable
     sudo apt-get update -y
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd dnsmasq
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd dnsmasq lxc lxc-dev
     test -f /root/.lxd_init || sudo lxd init --auto && sudo touch /root/.lxd_init
     sudo gpasswd -a $USER lxd
     sg lxd 'lxc list'

@@ -245,12 +245,18 @@ ansible_ref_require() {
 # Install and configure lxc, works on ubuntu only, used for CI of this script.
 lxc_require() {
     [ "$(lsb_release -si)" = "Ubuntu" ] || return 1
+    hash add-apt-repository || apt_get_install software-properties-common
     sudo add-apt-repository --yes ppa:ubuntu-lxc/stable
     apt_get_update
     apt_get_install dnsmasq lxc lxc-dev
 
     sudo sed -i 's/^#LXC_DOMAIN="lxc"/LXC_DOMAIN="lxc"/' /etc/default/lxc-net
-    sudo service lxc-net restart
+    for ((n=0;n<=22;n++)); do
+        if sudo service lxc-net restart; then
+            break
+        fi
+        sleep .1
+    done
 
     if ! grep 'server=/lxc/10.0.3.1' /etc/dnsmasq.d/lxc ; then
         echo server=/lxc/10.0.3.1 | sudo tee -a /etc/dnsmasq.d/lxc
@@ -284,37 +290,25 @@ lxc_python2_require() {
 lxd_require() {
     (( $APT_INSTALL )) || return 1
 
-    echo lxd    lxd/bridge-ipv4-dhcp-first    string    10.0.40.2 | sudo debconf-set-selections
-    echo lxd    lxd/bridge-ipv4-netmask    string    24 | sudo debconf-set-selections
-    echo lxd    lxd/bridge-ipv6-address    string | sudo debconf-set-selections
-    echo lxd    lxd/bridge-http-proxy    boolean    false | sudo debconf-set-selections
-    echo lxd    lxd/bridge-dnsmasq    string | sudo debconf-set-selections
-    echo lxd    lxd/bridge-ipv4-dhcp-leases    string    252 | sudo debconf-set-selections
-    echo lxd    lxd/bridge-empty-error    note | sudo debconf-set-selections
-    echo lxd    lxd/setup-bridge    boolean    true | sudo debconf-set-selections
-    echo lxd    lxd/bridge-random-warning    note | sudo debconf-set-selections
-    echo lxd    lxd/bridge-ipv4-nat    boolean    true | sudo debconf-set-selections
-    echo lxd    lxd/use-existing-bridge    boolean    false | sudo debconf-set-selections
-    echo lxd    lxd/bridge-ipv4-dhcp-last    string    10.0.40.254 | sudo debconf-set-selections
-    echo lxd    lxd/bridge-name    string    lxdbr0 | sudo debconf-set-selections
-    echo lxd    lxd/bridge-ipv6-nat    boolean    false | sudo debconf-set-selections
-    echo lxd    lxd/bridge-ipv6    boolean    false | sudo debconf-set-selections
-    echo lxd    lxd/bridge-domain    string    lxd | sudo debconf-set-selections
-    echo lxd    lxd/bridge-ipv4    boolean    true | sudo debconf-set-selections
-    echo lxd    lxd/bridge-ipv6-netmask    string | sudo debconf-set-selections
-    echo lxd    lxd/bridge-ipv4-address    string    10.0.40.1 | sudo debconf-set-selections
-    echo lxd    lxd/bridge-upgrade-warning    note | sudo debconf-set-selections
-    echo lxd    lxd/update-profile    boolean    true | sudo debconf-set-selections
+    hash add-apt-repository || apt_get_install software-properties-common
     sudo add-apt-repository -y ppa:ubuntu-lxc/lxd-stable
     sudo apt-get update -y
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd dnsmasq lxc lxc-dev
-    test -f /root/.lxd_init || sudo lxd init --auto && sudo touch /root/.lxd_init
     sudo gpasswd -a $USER lxd
-    sg lxd 'lxc list'
+    sg lxd 'lxc network create lxdbr0 ipv4.address=10.0.40.1/24 ipv4.nat=true dns.mode=managed'
+    sg lxd 'lxc profile edit default' <<EOF
+name: default
+config: {}
+devices:
+  eth0:
+    name: eth0
+    nictype: bridged
+    parent: lxdbr0
+    type: nic
+EOF
 
-    if [ ! -f /etc/dnsmasq.d/lxd ] ; then
+    if ! grep server=/lxd/ /etc/dnsmasq.d/lxd; then
         echo server=/lxd/10.0.40.1 | sudo tee -a /etc/dnsmasq.d/lxd
-        echo except-interface=lxdbr0 | sudo tee -a /etc/dnsmasq.d/lxd
         sudo service dnsmasq restart
     fi
 }

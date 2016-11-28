@@ -251,7 +251,12 @@ lxc_require() {
     apt_get_install dnsmasq lxc lxc-dev
 
     sudo sed -i 's/^#LXC_DOMAIN="lxc"/LXC_DOMAIN="lxc"/' /etc/default/lxc-net
-    sudo service lxc-net restart
+    for ((n=0;n<=22;n++)); do
+        if sudo service lxc-net restart; then
+            break
+        fi
+        sleep .1
+    done
 
     if ! grep 'server=/lxc/10.0.3.1' /etc/dnsmasq.d/lxc ; then
         echo server=/lxc/10.0.3.1 | sudo tee -a /etc/dnsmasq.d/lxc

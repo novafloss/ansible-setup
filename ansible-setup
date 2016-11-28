@@ -245,6 +245,7 @@ ansible_ref_require() {
 # Install and configure lxc, works on ubuntu only, used for CI of this script.
 lxc_require() {
     [ "$(lsb_release -si)" = "Ubuntu" ] || return 1
+    hash add-apt-repository || apt_get_install software-properties-common
     sudo add-apt-repository --yes ppa:ubuntu-lxc/stable
     apt_get_update
     apt_get_install dnsmasq lxc lxc-dev
@@ -305,6 +306,7 @@ lxd_require() {
     echo lxd    lxd/bridge-ipv4-address    string    10.0.40.1 | sudo debconf-set-selections
     echo lxd    lxd/bridge-upgrade-warning    note | sudo debconf-set-selections
     echo lxd    lxd/update-profile    boolean    true | sudo debconf-set-selections
+    hash add-apt-repository || apt_get_install software-properties-common
     sudo add-apt-repository -y ppa:ubuntu-lxc/lxd-stable
     sudo apt-get update -y
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd dnsmasq lxc lxc-dev

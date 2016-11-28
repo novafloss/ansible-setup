@@ -295,8 +295,10 @@ lxd_require() {
     sudo apt-get update -y
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y lxd dnsmasq lxc lxc-dev
     sudo gpasswd -a $USER lxd
-    sg lxd 'lxc network create lxdbr0 ipv4.address=10.0.40.1/24 ipv4.nat=true dns.mode=managed'
-    sg lxd 'lxc profile edit default' <<EOF
+
+    if ! sg lxd 'lxc network show lxdbr0'; then
+        sg lxd 'lxc network create lxdbr0 ipv4.address=10.0.40.1/24 ipv4.nat=true dns.mode=managed'
+        sg lxd 'lxc profile edit default' <<EOF
 name: default
 config: {}
 devices:
@@ -306,6 +308,7 @@ devices:
     parent: lxdbr0
     type: nic
 EOF
+    fi
 
     if ! grep server=/lxd/ /etc/dnsmasq.d/lxd; then
         echo server=/lxd/10.0.40.1 | sudo tee -a /etc/dnsmasq.d/lxd

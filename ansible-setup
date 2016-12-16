@@ -232,13 +232,11 @@ ansible_ref_require() {
         mv $tmp/ansible-modules-extras-$ansible_ref $ansible_path/lib/ansible/modules/extras
     fi
 
+    # Break paramiko dependency enforcement made by setuptools
+    ex +g/paramiko/d -cwq $ansible_path/setup.py
+
     $(get_pip) install --upgrade --no-deps --editable $ansible_path
 
-    # Break paramiko dependency enforcement made by setuptools
-    sed -i "s@/usr/bin/env python@$VIRTUALENV_PATH/bin/python@" $ansible_path/bin/ansible*
-    for i in $ansible_path/bin/ansible*; do
-        ln -sfn ../src/ansible/bin/${i##*/} $VIRTUALENV_PATH/bin
-    done
     if [ -n "$ansible_bin" ]; then
         prefix=$VIRTUALENV_PATH
         if [[ ! $prefix =~ ^/ ]]; then

@@ -239,7 +239,7 @@ ansible_ref_require() {
     for i in $ansible_path/bin/ansible*; do
         ln -sfn ../src/ansible/bin/${i##*/} $VIRTUALENV_PATH/bin
     done
-    if [ -n $ansible_bin ]; then
+    if [ -n "$ansible_bin" ]; then
         prefix=$VIRTUALENV_PATH
         if [[ ! $prefix =~ ^/ ]]; then
             prefix=$PWD/$prefix

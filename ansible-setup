@@ -171,9 +171,14 @@ virtualenv_require() {
     fi
     VIRTUALENV=$(get)
 
-    if [ ! -d $VIRTUALENV_PATH ]; then
+    if [ ! -d "$VIRTUALENV_PATH" ]; then
+        local parent="$(realpath -m $VIRTUALENV_PATH/..)"
+        local owner="$(stat -c '%U' $parent)"
+        [ "$owner" = "$USER" ] || sudo chown $USER $parent
         $VIRTUALENV --system-site-packages $VIRTUALENV_PATH
+        [ "$owner" = "$USER" ] || sudo chown $owner $parent
     fi
+
     PYTHON=${PYTHON-$VIRTUALENV_PATH/bin/python}
     PIP=${PIP-$VIRTUALENV_PATH/bin/python}
 

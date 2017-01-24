@@ -163,6 +163,11 @@ virtualenv_require() {
         else
             return 1
         fi
+
+        if apt-cache search virtualenv | grep '^virtualenv '; then
+            # Also needed on xenial
+            apt_get_install --no-install-recommends virtualenv
+        fi
     fi
     VIRTUALENV=$(get)
 

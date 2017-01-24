@@ -1,0 +1,6 @@
+---
+
+ansible_user_name: ansible
+ansible_user_home: /home/ansible
+ansible_setup_url: https://raw.githubusercontent.com/novafloss/ansible-setup/master/ansible-setup
+ansible_setup_path: /home/ansible/ansible-setup

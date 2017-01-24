@@ -1,0 +1,66 @@
+---
+
+- name: Create provisioning user
+  user:
+    name: '{{ ansible_user_name }}'
+    home: '{{ ansible_user_home }}'
+  become: true
+  become_user: root
+      #
+      #- name: Download fresh script
+      #  get_url:
+      #    url: '{{ ansible_setup_url }}'
+      #    dest: '{{ ansible_setup_path }}'
+      #    mode: 0750
+      #  when: 'not {{ ansible_setup_source }}'
+      #  become: true
+      #  become_user: '{{ ansible_user_name }}'
+      #
+- name: Upload script
+  copy:
+    #'{{ ansible_setup_source }}'
+    src: '{{ role_path }}/ansible-setup'
+    dest: '{{ ansible_setup_path }}'
+    mode: 0750
+  become: true
+  become_user: '{{ ansible_user_name }}'
+
+- name: Add provisioning user to sudo
+  lineinfile:
+    src: /etc/sudoers
+    dest: /etc/sudoers
+    state: present
+    regexp: '^{{ ansible_user_name }} ALL'
+    line: '{{ ansible_user_name }} ALL=(ALL) NOPASSWD: ALL'
+  become: true
+  become_user: root
+
+- name: Do ansible setups
+  shell: VIRTUALENV_PATH={{ item.virtualenv }} {{ ansible_setup_path }} ansible_ref_require {{ item.ref }}
+  with_items: '{{ ansible_setups }}'
+  become: true
+  become_user: '{{ ansible_user_name }}'
+
+- name: Do LXC setup
+  shell: '{{ ansible_setup_path }} lxc_require'
+  when: lxc
+
+- name: Add python-lxc to ansible setups
+  shell: VIRTUALENV_PATH={{ item.virtualenv }} {{ ansible_setup_path }} lxc_python2_require
+  when: lxc
+  become: true
+  become_user: root
+
+- name: Do LXD setup
+  shell: '{{ ansible_setup_path }} lxd_require'
+  when: lxd
+
+- name: Add provisioning user to sudo
+  lineinfile:
+    src: /etc/sudoers
+    dest: /etc/sudoers
+    state: absent
+    regexp: '^{{ ansible_user_name }} ALL'
+    line: '{{ ansible_user_name }} ALL=(ALL) NOPASSWD: ALL'
+  become: true
+  become_user: root

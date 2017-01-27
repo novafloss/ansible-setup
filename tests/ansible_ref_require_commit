@@ -1,0 +1,8 @@
+#!/bin/bash -eux
+testenv=testenv
+
+rm -rf $testenv
+VIRTUALENV_PATH=$testenv ansible_ref_require 32913c0 /usr/bin
+test -f $testenv/src/ansible/lib/ansible/modules/__init__.py
+$testenv/bin/ansible --version | grep 2.3
+ansible --version | grep 2.3

@@ -223,10 +223,20 @@ ansible_ref_require() {
         sleep .1
     done
 
+    if [ ! -d $tmp/ansible-$ansible_ref ]; then
+        git clone --recursive --depth 1 --branch devel --jobs 5 \
+            https://github.com/ansible/ansible.git \
+            $tmp/ansible-$ansible_ref
+        pushd $tmp/ansible-$ansible_ref
+        git checkout --detach $ansible_ref
+        popd
+    fi
+
     rm -rf $ansible_path && mkdir -p ${ansible_path%/*}
     mv $tmp/ansible-$ansible_ref $ansible_path
 
-    if [ $ansible_ref != 'devel' ]; then
+    # Did this happen before or after we still had submodules ?
+    if [ -d $tmp/ansible-modules-core-$ansible_ref ]; then
         rm -rf $ansible_path/lib/ansible/modules/{core,extras}
         mv $tmp/ansible-modules-core-$ansible_ref $ansible_path/lib/ansible/modules/core
         mv $tmp/ansible-modules-extras-$ansible_ref $ansible_path/lib/ansible/modules/extras

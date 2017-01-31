@@ -10,6 +10,7 @@ env:
   - TEST=lxc_require
   - TEST=ansible_ref_require_stable-2.1_absolute_virtualenv_path
   - TEST=ansible_ref_require_devel_relative_virtualenv_path
+  - TEST=ansible_ref_require_commit
 
 script:
 - ./test.sh ${TEST}

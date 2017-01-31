@@ -1,0 +1,25 @@
+---
+
+- hosts: localhost
+  become: true
+  become_user: root
+  become_method: sudo
+  pre_tasks:
+  - add_host: name=ansible-setup.lxd groups=ansible-setup
+  roles:
+  - novafloss.boot-lxd
+
+- hosts: ansible-setup
+  vars:
+    ansible_setup_source: '{{ playbook_dir }}/ansible-setup'
+    ansible_setups:
+    - virtualenv: /opt/ansible-2.2
+      ref: stable-2.2
+    - virtualenv: /opt/ansible-devel
+      ref: devel
+    lxc: true
+    lxd: true
+  roles:
+  - '{{ playbook_dir }}'
+  post_tasks:
+  - shell: echo ok
